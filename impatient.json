@@ -1,0 +1,13 @@
+{
+  "id": "cutscene-maker",
+  "title": "Cutscene Maker",
+  "description": "A module for creating and managing cutscenes in Foundry VTT.",
+  "version": "1.0.0",
+  "author": "Your Name",
+  "esmodules": ["scripts/cutscene-maker.js"],
+  "styles": ["styles/styles.css"],
+  "minimumCoreVersion": "11",
+  "compatibleCoreVersion": "11",
+  "manifest": "https://raw.githubusercontent.com/cyelis1224/CM4Foundry/main/module.json",
+  "download": "https://raw.githubusercontent.com/cyelis1224/CM4Foundry/main/module.zip"
+}
