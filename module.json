@@ -9,5 +9,5 @@
   "minimumCoreVersion": "11",
   "compatibleCoreVersion": "11",
   "manifest": "https://raw.githubusercontent.com/cyelis1224/CM4Foundry/main/module.json",
-  "download": "modules/cutscene-maker/module.zip"
+  "download": "https://raw.githubusercontent.com/cyelis1224/CM4Foundry/main/module.zip"
 }
