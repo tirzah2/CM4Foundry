@@ -53,7 +53,7 @@ This project is licensed under the MIT License. See the [LICENSE](LICENSE) file 
 For questions or suggestions, feel free to reach out:
 
 - **Email**: althomas731@example.com
-- **GitHub Issues**: [https://github.com/cyelis1224/CM4Foundry/issues](https://github.com/cyelis1224/cutscene-maker/issues)
+- **GitHub Issues**: [https://github.com/cyelis1224/CM4Foundry/issues](https://github.com/cyelis1224/CM4Foundry/issues)
 
 ## Acknowledgements
 
