@@ -169,7 +169,7 @@ Hooks.on('getSceneControlButtons', controls => {
   controls.push({
     name: 'cutscene-maker',
     title: 'Cutscene Maker',
-    icon: 'fas fa-film',
+    icon: 'fas fa-video',
     layer: 'controls',
     tools: [{
       name: 'openCutsceneMaker',
