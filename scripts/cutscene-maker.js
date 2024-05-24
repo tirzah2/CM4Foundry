@@ -37,32 +37,33 @@ function initializeCutsceneMacroMaker() {
       return mergeObject(super.defaultOptions, {
         id: "cutscene-maker-window",
         title: "Cutscene Maker",
-        template: "modules/cutscene-maker/templates/cutscene-maker.html", // Adjusted path to your HTML template
-        width: 700, // Set the width to 700px
-        height: "auto", // Let the height adjust automatically
+        template: "modules/cutscene-maker/templates/cutscene-maker.html",
+        width: 700,
         resizable: true,
         classes: ["cutscene-maker"]
       });
     }
 
     getData() {
-      return {}; // Return data to be used in the template rendering
+      return {};
     }
 
     activateListeners(html) {
       super.activateListeners(html);
-
+  
       this.populateActionButtons(html);
-
       this.updateActionList();
-
-      // Attach click handlers to the footer buttons
+  
       html.find("#testRunButton").click(() => {
         testRunActions();
       });
-
+  
       html.find("#exportButton").click(() => {
         exportCutsceneScript();
+      });
+  
+      html.find("#importButton").click(() => {
+        openImportDialog();
       });
     }
 
@@ -71,24 +72,42 @@ function initializeCutsceneMacroMaker() {
         { id: "CameraButton", label: "Camera", action: addCameraPositionAction },
         { id: "SwitchSceneButton", label: "Switch Scene", action: addSwitchSceneAction },
         { id: "TokenMovementButton", label: "Token Movement", action: addTokenMovementAction },
+        { id: "WaitButton", label: "Wait", action: addWaitAction },
         { id: "ScreenFlashButton", label: "Screen Flash", action: addScreenFlashAction },
         { id: "ScreenShakeButton", label: "Screen Shake", action: addScreenShakeAction },
         { id: "RunMacroButton", label: "Run Macro", action: addRunMacroAction },
-        { id: "WaitButton", label: "Wait", action: addWaitAction },
         { id: "ImageDisplayButton", label: "Image Display", action: addImageDisplayAction },
-        { id: "PlayAnimationButton", label: "Play Animation", action: addAnimationAction }
+        { id: "PlayAnimationButton", label: "Play Animation", action: addAnimationAction },
+        { id: "ShowHideTokenButton", label: "Show/Hide Token - PLACEHOLDER", action: dummyAction },
+        { id: "ChatButton", label: "Chat - PLACEHOLDER", action: dummyAction },
+        { id: "ConditionalBranchButton", label: "Conditional Branch - PLACEHOLDER", action: dummyAction },
+        { id: "TileMovementButton", label: "Tile Movement - PLACEHOLDER", action: dummyAction },
+        { id: "DoorStateButton", label: "Door State - PLACEHOLDER", action: dummyAction },
+        { id: "LightStateButton", label: "Light State - PLACEHOLDER", action: dummyAction },
+        { id: "AmbientSoundStateButton", label: "Ambient Sound State - PLACEHOLDER", action: dummyAction },
+        { id: "PlaySoundButton", label: "Play Sound - PLACEHOLDER", action: dummyAction },
+        { id: "ChangePlaylistButton", label: "Change Playlist - PLACEHOLDER", action: dummyAction },
+        { id: "FadeOutButton", label: "Fade Out", action: addFadeOutAction },
+        { id: "FadeInButton", label: "Fade In", action: addFadeInAction },        
+        { id: "HideUIButton", label: "Hide UI", action: addHideUIAction },
+        { id: "ShowUIButton", label: "Show UI", action: addShowUIAction },
+        { id: "WeatherParticleEffectsButton", label: "Weather/Particle Effects - PLACEHOLDER", action: dummyAction },
+        { id: "LocationBannerButton", label: "Location Banner - PLACEHOLDER", action: dummyAction }
       ];
     
       const availableActionsContainer = html.find("#availableActions");
-    
+
       actions.forEach(({ id, label, action }) => {
         const button = $(`<button id="${id}" class="cutscene-maker-button">${label}</button>`);
         button.click(() => {
-          console.log(`Button ${id} clicked`);
           action();
         });
         availableActionsContainer.append(button);
       });
+  
+      // Add Import Button
+      const importButton = $(`<button id="importButton" class="cutscene-maker-button">Import Script</button>`);
+      availableActionsContainer.append(importButton);
     }
 
     updateActionList() {
@@ -98,7 +117,7 @@ function initializeCutsceneMacroMaker() {
         actionList.append(`
           <li id="${action.id}" class="ui-state-default" style="display: flex; justify-content: space-between; align-items: center; padding: 5px 4px;">
             <span class="drag-handle" style="cursor: move; margin-right: 10px;">&#9776;</span>
-            <span style="flex-grow: 1; max-width: 200px; max-height: 80px; overflow: overlay;">${action.description}</span>
+            <span class="action-description" style="flex-grow: 1; overflow: overlay;">${action.description}</span>
             <span style="display: flex; gap: 5px;">
               <button class="edit-button" data-id="${action.id}" style="min-width: 60px; max-width: 60px;">Edit</button>
               <button class="remove-button" data-id="${action.id}" style="min-width: 60px; max-width: 60px;">Remove</button>
@@ -106,7 +125,7 @@ function initializeCutsceneMacroMaker() {
           </li>
         `);
       });
-
+    
       $(".edit-button").click(function() {
         const actionId = $(this).data("id");
         const action = cutsceneActions.find(action => action.id === actionId);
@@ -139,17 +158,29 @@ function initializeCutsceneMacroMaker() {
             case "animation":
               addAnimationAction(action);
               break;
+            case "fadeOut":
+              addFadeOutAction(action);
+              break;
+            case "fadeIn":
+              addFadeInAction(action);
+              break;
+            case "hideUI":
+              addHideUIAction(action);
+              break;
+            case "showUI":
+              addShowUIAction(action);
+              break;
             default:
               break;
           }
         }
       });
-
+    
       $(".remove-button").click(function() {
         const actionId = $(this).data("id");
         removeAction(actionId);
       });
-
+    
       if (!actionList.data('ui-sortable')) {
         actionList.sortable({
           handle: '.drag-handle',
@@ -188,8 +219,6 @@ function openCutsceneMakerWindow() {
   new CutsceneMakerWindow().render(true);
 }
 
-// Your existing functions like testRunActions, exportCutsceneScript, etc., remain unchanged
-
 function testRunActions() {
   const scriptContent = cutsceneActions.map(action => generateScript(action.type, action.params)).join("\n\n");
 
@@ -206,37 +235,251 @@ function testRunActions() {
         // The user's script content
         ${scriptContent}
 
-        
-        windowApp.maximize();
+        // Ensure we maximize the window after execution
+        if (windowApp) {
+          windowApp.maximize();
+        }
       } catch (error) {
         console.error("Error executing cutscene script: ", error);
-        windowApp.maximize();
         ui.notifications.error("Error executing cutscene script. Check the console for details.");
-        return Promise.reject(error);
+        throw error; // Ensure the error is propagated
       }
     })();
   `;
 
   // Execute the wrapped script
-  new Function(wrappedScript)()
+  new Promise((resolve, reject) => {
+    try {
+      new Function(wrappedScript)();
+      resolve();
+    } catch (error) {
+      reject(error);
+    }
+  })
     .then(() => {
-      // Unminimize the window
-      const windowApp = ui.windows[Object.keys(ui.windows).find(key => ui.windows[key].id === 'cutscene-maker-window')];
-      if (windowApp) {
-        windowApp.maximize();
-      }
       ui.notifications.info("Test run executed successfully.");
     })
     .catch(error => {
       console.error("Error during test run:", error);
-      ui.notifications.error("Error during test run. Check the console for details.");
-      // Ensure the window is unminimized even if there is an error
-      const windowApp = ui.windows[Object.keys(ui.windows).find(key => ui.windows[key].id === 'cutscene-maker-window')];
-      if (windowApp) {
-        windowApp.maximize();
-      }
     });
 }
+
+function openImportDialog() {
+  new Dialog({
+    title: "Import Script",
+    content: `
+      <form>
+        <div class="form-group">
+          <label for="importScript">Paste the script to import:</label>
+          <textarea id="importScript" name="importScript" style="width: 100%; height: 200px;"></textarea>
+        </div>
+      </form>
+    `,
+    buttons: {
+      import: {
+        label: "Import",
+        callback: html => {
+          const script = html.find("#importScript").val();
+          if (script) {
+            importScript(script);
+          }
+        }
+      },
+      cancel: {
+        label: "Cancel",
+        callback: () => {}
+      }
+    },
+    default: "import",
+    render: html => {
+      console.log("Import dialog rendered");
+    }
+  }).render(true);
+}
+
+function parseScript(script) {
+  const actions = script.split("\n\n").map(section => {
+    const type = parseActionType(section);
+    if (type === "dummy") return null; // Ignore unregistered actions
+    const params = parseParamsFromScript(section, type);
+    return { type, params, description: generateDescription(type, section) };
+  }).filter(action => action !== null); // Filter out null values
+  return actions;
+}
+
+function parseActionType(section) {
+  if (section.includes("Camera Position Action")) return "camera";
+  if (section.includes("Wait Action")) return "wait";
+  if (section.includes("Switch Scene Action")) return "switchScene";
+  if (section.includes("Token Teleport Action") || section.includes("Token Movement Action")) return "tokenMovement";
+  if (section.includes("Screen Shake Action")) return "screenShake";
+  if (section.includes("Screen Flash Action")) return "screenFlash";
+  if (section.includes("Run Macro Action")) return "runMacro";
+  if (section.includes("Image Display Action")) return "imageDisplay";
+  if (section.includes("Animation Action")) return "animation";
+  if (section.includes("Fade Out Action")) return "fadeOut";
+  if (section.includes("Fade In Action")) return "fadeIn";
+  if (section.includes("Hide UI Action")) return "hideUI";
+  if (section.includes("Show UI Action")) return "showUI";
+  // Add more cases as needed
+  return "dummy"; // Default to "dummy" if no match is found
+}
+
+function reconstructActions(parsedActions) {
+  parsedActions.forEach((action, index) => {
+    const actionId = `action-${cutsceneActions.length + index}`;
+    cutsceneActions.push({
+      id: actionId,
+      type: action.type,
+      params: action.params,
+      description: action.description
+    });
+  });
+  updateActionList();
+}
+
+function importScript(script) {
+  const parsedActions = parseScript(script);
+  reconstructActions(parsedActions);
+}
+
+function parseParamsFromScript(section, type) {
+  const params = {};
+
+  const getMatch = (regex, defaultValue = null) => {
+    const match = section.match(regex);
+    return match ? match[1] : defaultValue;
+  };
+
+  switch (type) {
+    case "camera":
+      params.x = parseFloat(getMatch(/x: (\d+\.?\d*)/, 0));
+      params.y = parseFloat(getMatch(/y: (\d+\.?\d*)/, 0));
+      params.scale = parseFloat(getMatch(/scale: (\d+\.?\d*)/, 1));
+      params.duration = parseInt(getMatch(/duration: (\d+)/, 1000));
+      break;
+    case "wait":
+      params.duration = parseInt(getMatch(/setTimeout\(resolve, (\d+)\)/, 1000));
+      break;
+    case "switchScene":
+      params.sceneId = getMatch(/get\("(.+?)"\)/, "");
+      break;
+    case "tokenMovement":
+      params.id = getMatch(/get\("(.+?)"\)/, "");
+      params.x = parseFloat(getMatch(/x: (\d+\.?\d*)/, 0));
+      params.y = parseFloat(getMatch(/y: (\d+\.?\d*)/, 0));
+      params.rotation = parseFloat(getMatch(/rotation: (\d+\.?\d*)/, 0));
+      params.teleport = section.includes("Token Teleport Action");
+      params.animatePan = section.includes("animatePan");
+      params.waitForCompletion = section.includes("await new Promise(resolve => setTimeout(resolve");
+      break;
+    case "screenShake":
+      params.duration = parseInt(getMatch(/duration: (\d+)/, 1000));
+      params.speed = parseInt(getMatch(/speed: (\d+)/, 10));
+      params.intensity = parseInt(getMatch(/intensity: (\d+)/, 5));
+      break;
+    case "screenFlash":
+      params.color = getMatch(/backgroundColor = "(.+?)"/, "#FFFFFF");
+      params.opacity = parseFloat(getMatch(/opacity = (\d+\.?\d*)/, 0.5));
+      params.duration = parseInt(getMatch(/duration = (\d+)/, 1000));
+      break;
+    case "runMacro":
+      params.macroName = getMatch(/find\(m => m\.name === "(.+?)"\)/, "");
+      break;
+    case "imageDisplay":
+      params.imageUrl = getMatch(/new ImagePopout\("(.+?)"/, "");
+      break;
+    case "animation":
+      params.animationUrl = getMatch(/file\("(.+?)"\)/, "");
+      params.scale = parseFloat(getMatch(/scale\((\d+\.?\d*)\)/, 1));
+      params.rotation = parseInt(getMatch(/rotate\((\d+\.?\d*)\)/, 0));
+      params.duration = parseInt(getMatch(/duration\((\d+)\)/, 1000));
+      params.sourceTokenId = getMatch(/attachTo\(canvas\.tokens\.get\("(.+?)"\)\)/, null);
+      params.targetTokenId = getMatch(/stretchTo\(canvas\.tokens\.get\("(.+?)"\)\)/, null);
+      break;
+    case "fadeOut":
+    case "fadeIn":
+      params.fadeDuration = parseInt(getMatch(/duration: (\d+)/, 2000));
+      break;
+    case "hideUI":
+    case "showUI":
+      params.duration = parseInt(getMatch(/duration: (\d+)/, 500));
+      break;
+    // Add more cases as needed
+    default:
+      break;
+  }
+
+  return params;
+}
+
+function generateDescription(type, section) {
+  const getMatch = (regex, defaultValue = "") => {
+    const match = section.match(regex);
+    return match ? match[1] : defaultValue;
+  };
+
+  switch (type) {
+    case "camera":
+      const camX = getMatch(/x: (\d+\.?\d*)/, 0);
+      const camY = getMatch(/y: (\d+\.?\d*)/, 0);
+      const camScale = getMatch(/scale: (\d+\.?\d*)/, 1);
+      const camDuration = getMatch(/duration: (\d+)/, 1000);
+      return `Camera Position (X: ${camX}, Y: ${camY}, Zoom: ${camScale}, Duration: ${camDuration}ms)`;
+    case "wait":
+      const waitDuration = getMatch(/setTimeout\(resolve, (\d+)\)/, 1000);
+      return `Wait for ${waitDuration} ms`;
+    case "switchScene":
+      const sceneId = getMatch(/get\("(.+?)"\)/, "");
+      return `Switch Scene to (ID: ${sceneId})`;
+    case "tokenMovement":
+      const tokenId = getMatch(/get\("(.+?)"\)/, "");
+      const tokenX = getMatch(/x: (\d+\.?\d*)/, 0);
+      const tokenY = getMatch(/y: (\d+\.?\d*)/, 0);
+      const tokenRotation = getMatch(/rotation: (\d+\.?\d*)/, 0);
+      return section.includes("Token Teleport Action")
+        ? `Token Teleport (X: ${tokenX}, Y: ${tokenY}, Rotation: ${tokenRotation}°)`
+        : `Token Movement (X: ${tokenX}, Y: ${tokenY}, Rotation: ${tokenRotation}°, Pan: ${section.includes("animatePan") ? 'Yes' : 'No'})`;
+    case "screenShake":
+      const shakeDuration = getMatch(/duration: (\d+)/, 1000);
+      const shakeSpeed = getMatch(/speed: (\d+)/, 10);
+      const shakeIntensity = getMatch(/intensity: (\d+)/, 5);
+      return `Screen Shake (Duration: ${shakeDuration}ms, Speed: ${shakeSpeed}, Intensity: ${shakeIntensity}px)`;
+    case "screenFlash":
+      const flashColor = getMatch(/backgroundColor = "(.+?)"/, "#FFFFFF");
+      const flashOpacity = getMatch(/opacity = (\d+\.?\d*)/, 0.5);
+      const flashDuration = getMatch(/duration = (\d+)/, 1000);
+      return `Screen Flash (Color: ${flashColor}, Opacity: ${flashOpacity}, Duration: ${flashDuration}ms)`;
+    case "runMacro":
+      const macroName = getMatch(/find\(m => m\.name === "(.+?)"\)/, "");
+      return `Run Macro: ${macroName}`;
+    case "imageDisplay":
+      const imageUrl = getMatch(/new ImagePopout\("(.+?)"/, "");
+      return `Display Image: ${imageUrl}`;
+    case "animation":
+      const animationUrl = getMatch(/file\("(.+?)"\)/, "");
+      const animationScale = getMatch(/scale\((\d+\.?\d*)\)/, 1);
+      const animationRotation = getMatch(/rotate\((\d+\.?\d*)\)/, 0);
+      const animationDuration = getMatch(/duration\((\d+)\)/, 1000);
+      return `Play Animation (URL: ${animationUrl}, Scale: ${animationScale}, Rotation: ${animationRotation}, Duration: ${animationDuration}ms)`;
+    case "fadeOut":
+      const fadeOutDuration = getMatch(/duration: (\d+)/, 2000);
+      return `Fade Out (Duration: ${fadeOutDuration}ms)`;
+    case "fadeIn":
+      const fadeInDuration = getMatch(/duration: (\d+)/, 2000);
+      return `Fade In (Duration: ${fadeInDuration}ms)`;
+    case "hideUI":
+      const hideUIDuration = getMatch(/duration: (\d+)/, 500);
+      return `Hide UI (Duration: ${hideUIDuration}ms)`;
+    case "showUI":
+      const showUIDuration = getMatch(/duration: (\d+)/, 500);
+      return `Show UI (Duration: ${showUIDuration}ms)`;
+    // Add more cases as needed
+    default:
+      return "Unregistered Action"; // Default to a generic description
+  }
+}
+
 
 function exportCutsceneScript() {
   const scriptContent = cutsceneActions.map(action => generateScript(action.type, action.params)).join("\n\n");
@@ -271,9 +514,6 @@ function exportCutsceneScript() {
     default: "close",
     render: html => {
       setTimeout(() => {
-        const dialogElement = html.closest(".window-app");
-        dialogElement.style.top = "25vh";
-        dialogElement.style.left = "75vw";
       }, 0);
     }
   }).render(true);
@@ -364,8 +604,6 @@ function addCameraPositionAction(existingAction = null, copiedParams = null) {
     render: html => {
       console.log("Dialog rendered: Camera Position Action");
       setTimeout(() => {
-        dialog.element[0].style.top = "25vh";
-        dialog.element[0].style.left = "75vw";
       }, 0);
     }
   });
@@ -414,8 +652,6 @@ function addSwitchSceneAction(existingAction = null) {
     render: html => {
       console.log("Dialog rendered: Switch Scene Action");
       setTimeout(() => {
-        dialog.element[0].style.top = "25vh";
-        dialog.element[0].style.left = "75vw";
       }, 0);
     }
   });
@@ -431,6 +667,7 @@ function addTokenMovementAction(existingAction = null) {
   }
   const selectedToken = canvas.tokens.controlled[0];
   const action = existingAction || {};
+  const waitForCompletionChecked = action.params && typeof action.params.waitForCompletion !== 'undefined' ? action.params.waitForCompletion : true; // Default to true if not specified
   const dialog = new Dialog({
     title: "Token Movement",
     content: `
@@ -448,7 +685,12 @@ function addTokenMovementAction(existingAction = null) {
         </div>
         <div class="form-group">
           <label for="tokenRotation">Token Rotation (in degrees):</label>
-          <input type="number" id="tokenRotation" name="tokenRotation" value="${action.params ? action.params.rotation : selectedToken.data.rotation}" step="1" style="width: 100%;">
+          <input type="number" id="tokenRotation" name="tokenRotation" value="${action.params ? action.params.rotation : selectedToken?.data?.rotation || 0}" step="1" style="width: 100%;">
+        </div>
+        <div class="form-group">
+          <label for="waitForCompletion">Wait for Completion:</label>
+          <input type="checkbox" id="waitForCompletion" name="waitForCompletion" ${waitForCompletionChecked ? 'checked' : ''} style="margin-top: 5px;">
+          <p style="font-size: 0.8em; margin-top: 5px;">Wait for movement to complete before proceeding.</p>
         </div>
       </form>
     `,
@@ -460,7 +702,8 @@ function addTokenMovementAction(existingAction = null) {
           const newRotation = parseFloat(html.find("#tokenRotation").val());
           const animatePan = html.find("#animatePan")[0].checked;
           const teleport = html.find("#teleport")[0].checked;
-          const params = { id: selectedToken.id, x: newPosition.x, y: newPosition.y, rotation: newRotation, animatePan, teleport };
+          const waitForCompletion = html.find("#waitForCompletion")[0].checked;
+          const params = { id: selectedToken.id, x: newPosition.x, y: newPosition.y, rotation: newRotation, animatePan, teleport, waitForCompletion };
           const description = teleport
             ? `Token Teleport (X: ${params.x}, Y: ${params.y}, Rotation: ${params.rotation}°)`
             : `Token Movement (X: ${params.x}, Y: ${params.y}, Rotation: ${params.rotation}°, Pan: ${params.animatePan ? 'Yes' : 'No'})`;
@@ -531,13 +774,26 @@ function addWaitAction(existingAction = null) {
     render: html => {
       console.log("Dialog rendered: Wait Duration");
       setTimeout(() => {
-        dialog.element[0].style.top = "25vh";
-        dialog.element[0].style.left = "75vw";
       }, 0);
     }
   });
 
   dialog.render(true);
+}
+
+function dummyAction(existingAction = null) {
+  console.log("Add Dummy Action");
+  const action = existingAction || {};
+  const params = {}; // No parameters for the dummy action
+  const description = "Dummy Action"; // Description for the dummy action
+
+  if (existingAction) {
+    updateAction(existingAction.id, params, description);
+  } else {
+    const actionId = generateUniqueId();
+    cutsceneActions.push({ id: actionId, description, type: "dummy", params });
+  }
+  updateActionList();
 }
 
 function addScreenFlashAction(existingAction = null) {
@@ -588,8 +844,6 @@ function addScreenFlashAction(existingAction = null) {
     render: html => {
       console.log("Dialog rendered: Screen Flash Action");
       setTimeout(() => {
-        dialog.element[0].style.top = "25vh";
-        dialog.element[0].style.left = "75vw";
       }, 0);
     }
   });
@@ -645,8 +899,6 @@ function addScreenShakeAction(existingAction = null) {
     render: html => {
       console.log("Dialog rendered: Screen Shake Action");
       setTimeout(() => {
-        dialog.element[0].style.top = "25vh";
-        dialog.element[0].style.left = "75vw";
       }, 0);
     }
   });
@@ -693,8 +945,6 @@ function addRunMacroAction(existingAction = null) {
     render: html => {
       console.log("Dialog rendered: Run Macro Action");
       setTimeout(() => {
-        dialog.element[0].style.top = "25vh";
-        dialog.element[0].style.left = "75vw";
       }, 0);
     }
   });
@@ -740,8 +990,6 @@ function addImageDisplayAction(existingAction = null) {
     render: html => {
       console.log("Dialog rendered: Image Display Action");
       setTimeout(() => {
-        dialog.element[0].style.top = "25vh";
-        dialog.element[0].style.left = "75vw";
       }, 0);
     }
   });
@@ -839,13 +1087,68 @@ function addAnimationAction(existingAction = null) {
     render: html => {
       console.log("Dialog rendered: Add Animation Action");
       setTimeout(() => {
-        dialog.element[0].style.top = "25vh";
-        dialog.element[0].style.left = "75vw";
       }, 0);
     }
   });
 
   dialog.render(true);
+}
+
+// Add this to define the new functions
+function addFadeOutAction(existingAction = null) {
+  console.log("Add Fade Out Action");
+  const actionId = generateUniqueId();
+  const description = "Fade Out";
+  const params = { fadeDuration: 2000 }; // Default duration
+
+  if (existingAction) {
+    updateAction(existingAction.id, params, description);
+  } else {
+    cutsceneActions.push({ id: actionId, description, type: "fadeOut", params });
+  }
+  updateActionList();
+}
+
+function addFadeInAction(existingAction = null) {
+  console.log("Add Fade In Action");
+  const actionId = generateUniqueId();
+  const description = "Fade In";
+  const params = { fadeDuration: 2000 }; // Default duration
+
+  if (existingAction) {
+    updateAction(existingAction.id, params, description);
+  } else {
+    cutsceneActions.push({ id: actionId, description, type: "fadeIn", params });
+  }
+  updateActionList();
+}
+
+function addHideUIAction(existingAction = null) {
+  console.log("Add Hide UI Action");
+  const actionId = generateUniqueId();
+  const description = "Hide UI";
+  const params = { duration: 500 }; // Default duration
+
+  if (existingAction) {
+    updateAction(existingAction.id, params, description);
+  } else {
+    cutsceneActions.push({ id: actionId, description, type: "hideUI", params });
+  }
+  updateActionList();
+}
+
+function addShowUIAction(existingAction = null) {
+  console.log("Add Show UI Action");
+  const actionId = generateUniqueId();
+  const description = "Show UI";
+  const params = { duration: 500 }; // Default duration
+
+  if (existingAction) {
+    updateAction(existingAction.id, params, description);
+  } else {
+    cutsceneActions.push({ id: actionId, description, type: "showUI", params });
+  }
+  updateActionList();
 }
 
 function updateActionList() {
@@ -986,7 +1289,7 @@ function generateScript(type, params) {
         })();
       `;
     case "tokenMovement":
-      return params.teleport
+      const moveScript = params.teleport
         ? `
           // Token Teleport Action
           (async function() {
@@ -1008,13 +1311,14 @@ function generateScript(type, params) {
               if (token) {
                 await token.document.update({ x: ${params.x}, y: ${params.y}, rotation: ${params.rotation} });
                 ${params.animatePan ? `await canvas.animatePan({ x: ${params.x}, y: ${params.y}, duration: 1000 });` : ""}
+                await new Promise(resolve => setTimeout(resolve, 1000)); // Wait for movement to complete
               }
-              await new Promise(resolve => setTimeout(resolve, 1000));
             } catch (error) {
               console.error("Error in token movement action:", error);
             }
           })();
         `;
+      return params.waitForCompletion ? `await ${moveScript}` : moveScript;
     case "screenShake":
       return `
         // Screen Shake Action
@@ -1133,6 +1437,76 @@ function generateScript(type, params) {
             .duration(${params.duration}) // Duration of the animation in milliseconds
             .play();
         `;
+    case "fadeOut":
+      return `
+        // Fade Out Action
+        (async function() {
+          try {
+            const canvasElement = document.querySelector("canvas#board");
+            canvasElement.style.transition = "filter ${params.fadeDuration}ms ease-in-out";
+            canvasElement.style.filter = "brightness(0)";
+            await new Promise(resolve => setTimeout(resolve, ${params.fadeDuration}));
+            console.log("Screen faded out over ${params.fadeDuration}ms.");
+          } catch (error) {
+            console.error("Error in fade out action:", error);
+          }
+        })();
+      `;
+    case "fadeIn":
+      return `
+        // Fade In Action
+        (async function() {
+          try {
+            const canvasElement = document.querySelector("canvas#board");
+            canvasElement.style.transition = "filter ${params.fadeDuration}ms ease-in-out";
+            canvasElement.style.filter = "brightness(1)";
+            await new Promise(resolve => setTimeout(resolve, ${params.fadeDuration}));
+            console.log("Screen faded in over ${params.fadeDuration}ms.");
+          } catch (error) {
+            console.error("Error in fade in action:", error);
+          }
+        })();
+      `;
+    case "hideUI":
+      return `
+        // Hide UI Action
+        (async function() {
+          try {
+            const uiSelectors = ["#ui-left", "#ui-top", "#taskbar", "#ui-right", "#players", "#hotbar"];
+            uiSelectors.forEach(selector => {
+              const element = document.querySelector(selector);
+              if (element) {
+                element.style.transition = 'transform ${params.duration}ms ease, opacity ${params.duration}ms ease';
+                element.style.opacity = '0';
+              }
+            });
+            await new Promise(resolve => setTimeout(resolve, ${params.duration}));
+            console.log("UI elements hidden over ${params.duration}ms.");
+          } catch (error) {
+            console.error("Error in hide UI action:", error);
+          }
+        })();
+      `;
+    case "showUI":
+      return `
+        // Show UI Action
+        (async function() {
+          try {
+            const uiSelectors = ["#ui-left", "#ui-top", "#taskbar", "#ui-right", "#players", "#hotbar"];
+            uiSelectors.forEach(selector => {
+              const element = document.querySelector(selector);
+              if (element) {
+                element.style.transition = 'transform ${params.duration}ms ease, opacity ${params.duration}ms ease';
+                element.style.opacity = '1';
+              }
+            });
+            await new Promise(resolve => setTimeout(resolve, ${params.duration}));
+            console.log("UI elements shown over ${params.duration}ms.");
+          } catch (error) {
+            console.error("Error in show UI action:", error);
+          }
+        })();
+      `;
     // Add more cases for other action types here as needed
     default:
       return "// Unknown Action";
