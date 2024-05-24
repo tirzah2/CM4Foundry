@@ -1,1 +1,22 @@
-/* Add your custom styles here */
+div#cutscene-maker-window {
+    min-width: 900px;
+    min-height: 500px;
+}
+
+button {
+    color: black;
+}
+
+.action-description {
+   max-height: 50px;
+   overflow-y: auto;
+}
+
+ul#actionList {
+    margin: 0;
+    padding: 0;
+}
+
+textarea {
+    color: black;
+}

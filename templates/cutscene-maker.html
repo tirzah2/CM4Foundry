@@ -1,0 +1,18 @@
+<!-- templates/cutscene-maker.html -->
+<div id="cutsceneContainer" style="display: flex; height: 90%; width: 100%;">
+    <div id="actionListContainer" style="flex: 1; border-right: 1px solid #ccc; padding: 10px; overflow-y: auto;">
+      <h3>Current Sequence</h3>
+      <ul id="actionList" class="sortable"></ul>
+    </div>
+    <div id="availableActionsContainer" style="flex: 1; padding: 10px;">
+      <h3>Available Actions</h3>
+      <div id="availableActions" class="cutscene-maker-buttons">
+        <!-- Buttons for available actions will be dynamically added here -->
+      </div>
+    </div>
+  </div>
+  <div id="cutsceneButtons" style="display: flex; justify-content: space-between; padding: 10px; max-height: 55px;">
+    <button id="testRunButton" style="color: black;">Test Run</button>
+    <button id="exportButton" style="color: black;">Export</button>
+  </div>
+  
