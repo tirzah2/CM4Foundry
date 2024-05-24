@@ -1,6 +1,8 @@
 div#cutscene-maker-window {
-    min-width: 900px;
-    min-height: 500px;
+    width: 900px;
+    height: 520px;
+    min-width: 700px;
+    min-height: 520px;
 }
 
 button {
@@ -26,3 +28,19 @@ textarea {
     overflow: hidden;
   }
   
+  div#cutsceneContainer {
+    min-height: 420px;
+    overflow: overlay;
+}
+
+div#availableActions {
+    height: 370px;
+    overflow-y: scroll;
+    overflow-x: clip;
+    height: -webkit-fill-available;
+}
+
+div#button-container {
+    height: -webkit-fill-available;
+    margin-bottom: 22px;
+}
