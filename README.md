@@ -15,7 +15,7 @@ A module for creating and managing cutscenes in Foundry Virtual Tabletop (VTT). 
 
 ## Installation
 
-1. Download the module from the [releases page](https://github.com/cyelis1224/cutscene-maker/releases) or install directly via Foundry VTT.
+1. Download the module from the [releases page](https://github.com/cyelis1224/CM4Foundry/releases) or install directly via Foundry VTT.
 2. Extract the module files to your `Data/modules` directory.
 3. Enable the module in your Foundry VTT game settings.
 
@@ -53,7 +53,7 @@ This project is licensed under the MIT License. See the [LICENSE](LICENSE) file 
 For questions or suggestions, feel free to reach out:
 
 - **Email**: althomas731@example.com
-- **GitHub Issues**: [https://github.com/cyelis1224/cutscene-maker/issues](https://github.com/cyelis1224/cutscene-maker/issues)
+- **GitHub Issues**: [https://github.com/cyelis1224/CM4Foundry/issues](https://github.com/cyelis1224/cutscene-maker/issues)
 
 ## Acknowledgements
 
