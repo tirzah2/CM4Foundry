@@ -20,3 +20,9 @@ ul#actionList {
 textarea {
     color: black;
 }
+
+.window-app.minimized {
+    height: 40px;
+    overflow: hidden;
+  }
+  
