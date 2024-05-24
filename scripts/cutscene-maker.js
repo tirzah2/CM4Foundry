@@ -192,15 +192,40 @@ function openCutsceneMakerWindow() {
 
 function testRunActions() {
   const scriptContent = cutsceneActions.map(action => generateScript(action.type, action.params)).join("\n\n");
-  const asyncScript = `(async () => { ${scriptContent} })();`;
 
-  try {
-    new Function(asyncScript)();
-    ui.notifications.info("Test run executed successfully.");
-  } catch (error) {
-    console.error("Error executing cutscene script: ", error);
-    ui.notifications.error("Error executing cutscene script. Check the console for details.");
-  }
+  // Wrap the script content in a function that returns a promise
+  const wrappedScript = `
+    (async function() {
+      try {
+        // Minimize the window
+        const windowApp = document.querySelector('#cutscene-maker-window').closest('.window-app');
+        windowApp.classList.add('minimized');
+
+        // The user's script content
+        ${scriptContent}
+
+        // Ensure the script returns a promise that resolves when the script is done
+        return Promise.resolve();
+      } catch (error) {
+        console.error("Error executing cutscene script: ", error);
+        ui.notifications.error("Error executing cutscene script. Check the console for details.");
+        return Promise.reject(error);
+      }
+    })();
+  `;
+
+  // Execute the wrapped script
+  new Function(wrappedScript)()
+    .then(() => {
+      // Unminimize the window
+      const windowApp = document.querySelector('#cutscene-maker-window').closest('.window-app');
+      windowApp.classList.remove('minimized');
+      ui.notifications.info("Test run executed successfully.");
+    })
+    .catch(error => {
+      console.error("Error during test run:", error);
+      ui.notifications.error("Error during test run. Check the console for details.");
+    });
 }
 
 function exportCutsceneScript() {
