@@ -198,16 +198,19 @@ function testRunActions() {
     (async function() {
       try {
         // Minimize the window
-        const windowApp = document.querySelector('#cutscene-maker-window').closest('.window-app');
-        windowApp.classList.add('minimized');
+        const windowApp = ui.windows[Object.keys(ui.windows).find(key => ui.windows[key].id === 'cutscene-maker-window')];
+        if (windowApp) {
+          windowApp.minimize();
+        }
 
         // The user's script content
         ${scriptContent}
 
-        // Ensure the script returns a promise that resolves when the script is done
-        return Promise.resolve();
+        
+        windowApp.maximize();
       } catch (error) {
         console.error("Error executing cutscene script: ", error);
+        windowApp.maximize();
         ui.notifications.error("Error executing cutscene script. Check the console for details.");
         return Promise.reject(error);
       }
@@ -218,13 +221,20 @@ function testRunActions() {
   new Function(wrappedScript)()
     .then(() => {
       // Unminimize the window
-      const windowApp = document.querySelector('#cutscene-maker-window').closest('.window-app');
-      windowApp.classList.remove('minimized');
+      const windowApp = ui.windows[Object.keys(ui.windows).find(key => ui.windows[key].id === 'cutscene-maker-window')];
+      if (windowApp) {
+        windowApp.maximize();
+      }
       ui.notifications.info("Test run executed successfully.");
     })
     .catch(error => {
       console.error("Error during test run:", error);
       ui.notifications.error("Error during test run. Check the console for details.");
+      // Ensure the window is unminimized even if there is an error
+      const windowApp = ui.windows[Object.keys(ui.windows).find(key => ui.windows[key].id === 'cutscene-maker-window')];
+      if (windowApp) {
+        windowApp.maximize();
+      }
     });
 }
 
