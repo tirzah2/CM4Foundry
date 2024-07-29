@@ -1,4 +1,6 @@
 // Load jQuery UI for sortable functionality
+let recorder; // Define the recorder variable globally
+
 const loadScript = (url, callback) => {
   const script = document.createElement("script");
   script.type = "text/javascript";
@@ -46,45 +48,61 @@ function initializeCutsceneMacroMaker() {
     getData() {
       return {};
     }
-
     activateListeners(html) {
       super.activateListeners(html);
-
+    
       this.populateActionButtons(html);
       this.updateActionList();
-
+    
       html.find("#testRunButton").click(() => {
         testRunActions();
       });
-
+    
       html.find("#exportButton").click(() => {
         exportCutsceneScript();
       });
-
+    
       html.find("#importButton").click(() => {
         openImportDialog();
       });
+    
+      // Add Rec Test Run button
+      html.find("#recTestRunButton").click(async () => {
+        try {
+          // Prompt the user to choose where to save the recording file
+          const suggestedName = "screen-recording.webm";
+          const handle = await window.showSaveFilePicker({ suggestedName });
+          const writable = await handle.createWritable();
+          await recTestRunActions(writable);
+        } catch (error) {
+          console.error("Error during file save dialog:", error);
+        }
+      });
     }
+    
 
     populateActionButtons(html) {
-      const actions = [
-        { id: "CameraButton", label: "Camera", action: addCameraPositionAction },
-        { id: "SwitchSceneButton", label: "Switch Scene", action: addSwitchSceneAction },
-        { id: "TokenMovementButton", label: "Token Movement", action: addTokenMovementAction },
-        { id: "WaitButton", label: "Wait", action: addWaitAction },
-        { id: "ScreenFlashButton", label: "Screen Flash", action: addScreenFlashAction },
-        { id: "ScreenShakeButton", label: "Screen Shake", action: addScreenShakeAction },
-        { id: "RunMacroButton", label: "Run Macro", action: addRunMacroAction },
-        { id: "ImageDisplayButton", label: "Image Display", action: addImageDisplayAction },
-        { id: "PlayAnimationButton", label: "Play Animation", action: addAnimationAction },
-        { id: "ShowHideTokenButton", label: "Show/Hide Token", action: showHideAction },
-        { id: "TileMovementButton", label: "Tile Movement", action: addTileMovementAction },
-        { id: "DoorStateButton", label: "Door State", action: addDoorStateAction },
-        { id: "FadeOutButton", label: "Fade Out", action: addFadeOutAction },
-        { id: "FadeInButton", label: "Fade In", action: addFadeInAction },
-        { id: "HideUIButton", label: "Hide UI", action: addHideUIAction },
-        { id: "ShowUIButton", label: "Show UI", action: addShowUIAction }
-      ];
+    const actions = [
+      { id: "CameraButton", label: "Camera", action: addCameraPositionAction },
+      { id: "SwitchSceneButton", label: "Switch Scene", action: addSwitchSceneAction },
+      { id: "TokenMovementButton", label: "Token Movement", action: addTokenMovementAction },
+      { id: "WaitButton", label: "Wait", action: addWaitAction },
+      { id: "ScreenFlashButton", label: "Screen Flash", action: addScreenFlashAction },
+      { id: "ScreenShakeButton", label: "Screen Shake", action: addScreenShakeAction },
+      { id: "RunMacroButton", label: "Run Macro", action: addRunMacroAction },
+      { id: "ImageDisplayButton", label: "Image Display", action: addImageDisplayAction },
+      { id: "PlayAnimationButton", label: "Play Animation", action: addAnimationAction },
+      { id: "ShowHideTokenButton", label: "Show/Hide Token", action: showHideAction },
+      { id: "TileMovementButton", label: "Tile Movement", action: addTileMovementAction },
+      { id: "DoorStateButton", label: "Door State", action: addDoorStateAction },
+      { id: "FadeOutButton", label: "Fade Out", action: addFadeOutAction },
+      { id: "FadeInButton", label: "Fade In", action: addFadeInAction },
+      { id: "HideUIButton", label: "Hide UI", action: addHideUIAction },
+      { id: "ShowUIButton", label: "Show UI", action: addShowUIAction },  
+      { id: "PlayAudioButton", label: "Play Audio", action: addPlayAudioAction }, // Add this line
+      { id: "TokenSayButton", label: "Token Say", action: addTokenSayAction },
+      { id: "StopRecordingButton", label: "Stop Recording", action: addStopRecordingAction } 
+    ];
     
       const availableActionsContainer = html.find("#availableActions");
     
@@ -160,9 +178,18 @@ function initializeCutsceneMacroMaker() {
             case "hideUI":
               addHideUIAction(action);
               break;
+              case "addPlayAudioAction":
+                addPlayAudioAction(action);
+                break;
+                case "addTokenSayAction":
+                  addTokenSayAction(action);
+                  break;
             case "showUI":
               addShowUIAction(action);
               break;
+              case "stopRecording":
+                addStopRecordingAction(action);
+                break;
             default:
               break;
           }
@@ -212,22 +239,95 @@ function initializeCutsceneMacroMaker() {
     new CutsceneMakerWindow().render(true);
   }
 
-  function testRunActions() {
-    const scriptContent = cutsceneActions.map(action => generateScript(action.type, action.params)).join("\n\n");
+  async function recTestRunActions(writable) {
+    try {
+      // Capture the canvas elements
+      const boardCanvas = document.getElementById("board");
+      const sequencerCanvas = document.getElementById("sequencerUILayerAbove");
+  
+      if (!boardCanvas) {
+        throw new Error("Canvas element with id 'board' not found.");
+      }
+  
+      if (!sequencerCanvas) {
+        throw new Error("Canvas element with id 'sequencerUILayerAbove' not found.");
+      }
+  
+      // Capture streams from both canvases
+      const boardStream = boardCanvas.captureStream(30); // 30 FPS
+      const sequencerStream = sequencerCanvas.captureStream(30); // 30 FPS
+  
+      console.log("Board stream captured:", boardStream);
+      console.log("Sequencer stream captured:", sequencerStream);
+  
+      // Create a composite stream
+      const compositeStream = new MediaStream();
+      boardStream.getTracks().forEach(track => compositeStream.addTrack(track));
+      sequencerStream.getTracks().forEach(track => compositeStream.addTrack(track));
+  
+      console.log("Composite stream created:", compositeStream);
+  
+      const options = { mimeType: 'video/webm; codecs=vp8' };
+      recorder = new MediaRecorder(compositeStream, options); // Use the global recorder variable
+      const chunks = [];
+  
+      recorder.onstart = () => {
+        console.log("Recorder started");
+      };
+  
+      recorder.ondataavailable = (event) => {
+        console.log("Data available: ", event.data.size); // Debug log
+        if (event.data.size > 0) {
+          chunks.push(event.data);
+        }
+      };
+  
+      recorder.onstop = async () => {
+        console.log("Recording stopped. Chunks length: ", chunks.length); // Debug log
+        if (chunks.length > 0) {
+          const blob = new Blob(chunks, { type: 'video/webm' });
+          await writable.write(blob);
+          await writable.close();
+          console.log("Recording saved successfully.");
+        } else {
+          console.warn("No chunks to save.");
+        }
+      };
+  
+      recorder.onerror = (event) => {
+        console.error("Recorder error: ", event.error);
+      };
+  
+      // Start recording
+      recorder.start();
+      console.log("Recording started.");
+  
+      // Perform the test run actions without stopping the recording automatically
+      await testRunActions();
+    } catch (error) {
+      console.error("Error during Rec Test Run:", error);
+    }
+  }
+  
+  
 
+  
+  async function testRunActions() {
+    const scriptContent = cutsceneActions.map(action => generateScript(action.type, action.params)).join("\n\n");
+  
     // Wrap the script content in a function that returns a promise
     const wrappedScript = `
-      (async function() {
+      (async function(recorder) {
         try {
           // Minimize the window
           const windowApp = ui.windows[Object.keys(ui.windows).find(key => ui.windows[key].id === 'cutscene-maker-window')];
           if (windowApp) {
             windowApp.minimize();
           }
-
+  
           // The user's script content
           ${scriptContent}
-
+  
           // Ensure we maximize the window after execution
           if (windowApp) {
             windowApp.maximize();
@@ -237,25 +337,19 @@ function initializeCutsceneMacroMaker() {
           ui.notifications.error("Error executing cutscene script. Check the console for details.");
           throw error; // Ensure the error is propagated
         }
-      })();
+      })(recorder);
     `;
-
+  
     // Execute the wrapped script
-    new Promise((resolve, reject) => {
-      try {
-        new Function(wrappedScript)();
-        resolve();
-      } catch (error) {
-        reject(error);
-      }
-    })
-      .then(() => {
-        ui.notifications.info("Test run executed successfully.");
-      })
-      .catch(error => {
-        console.error("Error during test run:", error);
-      });
+    try {
+      await new Function('recorder', wrappedScript)(recorder);
+      ui.notifications.info("Test run executed successfully.");
+    } catch (error) {
+      console.error("Error during test run:", error);
+    }
   }
+  
+  
 
   function openImportDialog() {
     new Dialog({
@@ -317,6 +411,7 @@ function initializeCutsceneMacroMaker() {
     if (section.includes("Hide UI Action")) return "hideUI";
     if (section.includes("Show UI Action")) return "showUI";
     if (section.includes("Door State Action")) return "doorState";
+    if (section.includes("Stop Recording Action")) return "stopRecording";
     return "dummy"; // Default to "dummy" if no match is found
   }
 
@@ -345,6 +440,7 @@ function initializeCutsceneMacroMaker() {
       const match = section.match(regex);
       return match ? match[1] : defaultValue;
     };
+
 
     switch (type) {
       case "camera":
@@ -416,6 +512,15 @@ function initializeCutsceneMacroMaker() {
         break;
       case "showUI":
         params.duration = parseInt(getMatch(/duration: (\d+)/, 500));
+        break;
+      case "playAudio":
+        params.audioFilePath = getMatch(/src: "(.+?)"/, "");
+        break;
+      case "tokenSay":
+        params.tokenId = getMatch(/canvas\.tokens\.get\("(.+?)"\)/, "");
+        params.message = getMatch(/content: "(.+?)"/, "");
+        break;
+      case "stopRecording":
         break;
       // Add more cases as needed
       default:
@@ -501,6 +606,14 @@ function initializeCutsceneMacroMaker() {
       case "showUI":
         const showUIDuration = getMatch(/duration: (\d+)/, 500);
         return `Show UI (Duration: ${showUIDuration}ms)`;
+      case "playAudio":
+        const audioFilePath = getMatch(/src: "(.+?)"/, "");
+        return `Play Audio: ${audioFilePath}`;
+      case "tokenSay":
+        const tokenMessage = getMatch(/content: "(.+?)"/, "");
+        return `Token says: ${tokenMessage}`;
+      case "stopRecording":
+        return "Stop Recording";
       // Add more cases as needed
       default:
         return "Unregistered Action"; // Default to a generic description
@@ -544,7 +657,20 @@ function initializeCutsceneMacroMaker() {
       }
     }).render(true);
   }
-
+  function addStopRecordingAction(existingAction = null) {
+    console.log("Add Stop Recording Action");
+    const actionId = generateUniqueId();
+    const description = "Stop Recording";
+    const params = {}; // No additional parameters needed
+  
+    if (existingAction) {
+      updateAction(existingAction.id, params, description);
+    } else {
+      cutsceneActions.push({ id: actionId, description, type: "stopRecording", params });
+    }
+    updateActionList();
+  }
+  
   function addCameraPositionAction(existingAction = null, copiedParams = null) {
     console.log("Add Camera Position Action");
     const action = existingAction || {};
@@ -764,7 +890,115 @@ function initializeCutsceneMacroMaker() {
   
     dialog.render(true);
   }
-
+  function addTokenSayAction(existingAction = null) {
+    console.log("Add Token Say Action");
+    const action = existingAction || {};
+    const selectedTokenId = canvas.tokens.controlled.length === 1 ? canvas.tokens.controlled[0].id : (action.params ? action.params.tokenId : "");
+  
+    const dialog = new Dialog({
+      title: "Token Say",
+      content: `
+        <form>
+          <div class="form-group">
+            <label for="tokenId">Token ID:</label>
+            <input type="text" id="tokenId" name="tokenId" value="${selectedTokenId}" style="width: 100%;">
+          </div>
+          <button type="button" id="getSelectedToken" style="width: 100%;">Get currently selected token</button>
+          <div class="form-group">
+            <label for="tokenMessage">Message:</label>
+            <textarea id="tokenMessage" name="tokenMessage" style="width: 100%;" rows="4">${action.params ? action.params.message : ''}</textarea>
+          </div>
+        </form>
+      `,
+      buttons: {
+        ok: {
+          label: "OK",
+          callback: html => {
+            const tokenId = html.find("#tokenId").val();
+            const message = html.find("#tokenMessage").val();
+            const params = { tokenId, message };
+            const description = `Token ${tokenId} says: ${message}`;
+    
+            if (existingAction) {
+              updateAction(existingAction.id, params, description);
+            } else {
+              const actionId = generateUniqueId();
+              cutsceneActions.push({ id: actionId, description, type: "tokenSay", params });
+            }
+            updateActionList();
+          }
+        },
+        cancel: {
+          label: "Cancel",
+          callback: () => {}
+        }
+      },
+      default: "ok",
+      render: html => {
+        console.log("Dialog rendered: Token Say Action");
+        html.find("#getSelectedToken").click(() => {
+          if (canvas.tokens.controlled.length === 1) {
+            html.find("#tokenId").val(canvas.tokens.controlled[0].id);
+          } else {
+            ui.notifications.warn("Please select exactly one token.");
+          }
+        });
+      }
+    });
+  
+    dialog.render(true);
+  }
+  function addPlayAudioAction(existingAction = null) {
+    console.log("Add Play Audio Action");
+    const action = existingAction || {};
+  
+    const dialog = new Dialog({
+      title: "Play Audio",
+      content: `
+        <form>
+          <div class="form-group">
+            <label for="audioFile">Audio File:</label>
+            <input type="text" id="audioFilePath" name="audioFilePath" placeholder="filename" style="width: 100%;">
+          </div>
+        </form>
+      `,
+      buttons: {
+        ok: {
+          label: "OK",
+          callback: html => {
+            const audioFilePath = html.find("#audioFilePath").val();
+            if (audioFilePath) {
+              const params = { audioFilePath };
+              if (existingAction) {
+                updateAction(existingAction.id, params, `Play Audio: ${audioFilePath}`);
+              } else {
+                const actionId = generateUniqueId();
+                cutsceneActions.push({ id: actionId, description: `Play Audio: ${audioFilePath}`, type: "playAudio", params });
+              }
+              updateActionList();
+            }
+          }
+        },
+        cancel: {
+          label: "Cancel",
+          callback: () => {}
+        }
+      },
+      default: "ok",
+      render: html => {
+        console.log("Dialog rendered: Play Audio Action");
+  
+        html.find("#browseAudioFile").click(async () => {
+          const audioFilePath = await FilePicker.browse("data");
+          if (audioFilePath.target) {
+            html.find("#audioFilePath").val(audioFilePath.target);
+          }
+        });
+      }
+    });
+  
+    dialog.render(true);
+  }
   function addDoorStateAction(existingAction = null) {
     console.log("Add Door State Action");
     const action = existingAction || {};
@@ -1454,6 +1688,12 @@ function initializeCutsceneMacroMaker() {
           case "doorState":
             addDoorStateAction(action);
             break;
+          case "playAudio":
+            addPlayAudioAction(action);
+            break;
+          case "tokenSay":
+            addTokenSayAction(action);
+            break;
           default:
             break;
         }
@@ -1477,6 +1717,7 @@ function initializeCutsceneMacroMaker() {
     }
     actionList.disableSelection();
   }
+  
 
   function removeAction(actionId) {
     cutsceneActions = cutsceneActions.filter(action => action.id !== actionId);
@@ -1520,12 +1761,52 @@ function initializeCutsceneMacroMaker() {
             }
           })();
         `;
+        case "stopRecording":
+          return `
+            // Stop Recording Action
+            if (recorder && recorder.state === "recording") {
+              recorder.stop();
+              console.log("Recording stopped by action.");
+            } else {
+              console.warn("No active recording found to stop.");
+            }
+          `;
       case "wait":
         return `
           // Wait Action
           // This script pauses the execution for the specified duration in milliseconds.
           await new Promise(resolve => setTimeout(resolve, ${params.duration}));
         `;
+        case "playAudio":
+          return `
+            // Play Audio Action
+            (async function() {
+              try {
+                AudioHelper.play({ src: "${params.audioFilePath}", volume: 0.8, autoplay: true, loop: false }, true);
+              } catch (error) {
+                console.error("Error in play audio action:", error);
+              }
+            })();
+          `;
+          case "tokenSay":
+            return `
+              // Token Say Action
+              (async function() {
+                try {
+                  const token = canvas.tokens.get("${params.tokenId}");
+                  if (token) {
+                    let chatData = {
+                      user: game.user._id,
+                      speaker: { token: token.id, alias: token.name },
+                      content: "${params.message}"
+                    };
+                    ChatMessage.create(chatData, {});
+                  }
+                } catch (error) {
+                  console.error("Error in token say action:", error);
+                }
+              })();
+            `;
       case "switchScene":
         return `
           // Switch Scene Action
