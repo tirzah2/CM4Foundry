@@ -18,7 +18,27 @@ ul#actionList {
     margin: 0;
     padding: 0;
 }
-
+#screen-select-overlay {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: 10000;
+    cursor: crosshair;
+  }
+  
+  #selection-box {
+    position: absolute;
+    border: 2px dashed #fff;
+    background-color: rgba(255, 0, 0, 0.3); /* Add this line for debugging */
+    pointer-events: none;
+    cursor: crosshair;
+  }
+  
+  
 textarea {
     color: black;
 }
