@@ -1,6 +1,6 @@
 // Load jQuery UI for sortable functionality
 let recorder; // Define the recorder variable globally
-
+let selectionData = {};
 const loadScript = (url, callback) => {
   const script = document.createElement("script");
   script.type = "text/javascript";
@@ -22,7 +22,11 @@ loadScript("https://code.jquery.com/ui/1.12.1/jquery-ui.js", () => {
   console.log("jQuery UI loaded");
   initializeCutsceneMacroMaker();
 });
-
+document.body.insertAdjacentHTML('beforeend', `
+<div id="screen-select-overlay" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:10000;">
+  <div id="selection-box" style="position:absolute; border:2px dashed #fff;"></div>
+</div>
+`);
 function initializeCutsceneMacroMaker() {
   let cutsceneActions = [];
   let actionCounter = 0;
@@ -69,11 +73,16 @@ function initializeCutsceneMacroMaker() {
       // Add Rec Test Run button
       html.find("#recTestRunButton").click(async () => {
         try {
-          // Prompt the user to choose where to save the recording file
+          // Show the selection overlay to allow the user to select the recording area
+          const selection = await showSelectionOverlay();
+      
+          // Now prompt the user to choose where to save the recording file
           const suggestedName = "screen-recording.webm";
           const handle = await window.showSaveFilePicker({ suggestedName });
           const writable = await handle.createWritable();
-          await recTestRunActions(writable);
+      
+          // Pass the selected area to the recording function
+          await recTestRunActions(writable, selection);
         } catch (error) {
           console.error("Error during file save dialog:", error);
         }
@@ -238,78 +247,205 @@ function initializeCutsceneMacroMaker() {
   function openCutsceneMakerWindow() {
     new CutsceneMakerWindow().render(true);
   }
-
-  async function recTestRunActions(writable) {
-    try {
-      // Capture the canvas elements
-      const boardCanvas = document.getElementById("board");
-      const sequencerCanvas = document.getElementById("sequencerUILayerAbove");
+  function showSelectionOverlay() {
+    return new Promise((resolve) => {
+      const overlay = document.getElementById('screen-select-overlay');
+      const selectionBox = document.getElementById('selection-box');
+      let startX, startY, currentX, currentY;
   
-      if (!boardCanvas) {
-        throw new Error("Canvas element with id 'board' not found.");
-      }
+      overlay.style.display = 'block';
   
-      if (!sequencerCanvas) {
-        throw new Error("Canvas element with id 'sequencerUILayerAbove' not found.");
-      }
-  
-      // Capture streams from both canvases
-      const boardStream = boardCanvas.captureStream(30); // 30 FPS
-      const sequencerStream = sequencerCanvas.captureStream(30); // 30 FPS
-  
-      console.log("Board stream captured:", boardStream);
-      console.log("Sequencer stream captured:", sequencerStream);
-  
-      // Create a composite stream
-      const compositeStream = new MediaStream();
-      boardStream.getTracks().forEach(track => compositeStream.addTrack(track));
-      sequencerStream.getTracks().forEach(track => compositeStream.addTrack(track));
-  
-      console.log("Composite stream created:", compositeStream);
-  
-      const options = { mimeType: 'video/webm; codecs=vp8' };
-      recorder = new MediaRecorder(compositeStream, options); // Use the global recorder variable
-      const chunks = [];
-  
-      recorder.onstart = () => {
-        console.log("Recorder started");
-      };
-  
-      recorder.ondataavailable = (event) => {
-        console.log("Data available: ", event.data.size); // Debug log
-        if (event.data.size > 0) {
-          chunks.push(event.data);
-        }
-      };
-  
-      recorder.onstop = async () => {
-        console.log("Recording stopped. Chunks length: ", chunks.length); // Debug log
-        if (chunks.length > 0) {
-          const blob = new Blob(chunks, { type: 'video/webm' });
-          await writable.write(blob);
-          await writable.close();
-          console.log("Recording saved successfully.");
-        } else {
-          console.warn("No chunks to save.");
-        }
-      };
-  
-      recorder.onerror = (event) => {
-        console.error("Recorder error: ", event.error);
-      };
-  
-      // Start recording
-      recorder.start();
-      console.log("Recording started.");
-  
-      // Perform the test run actions without stopping the recording automatically
-      await testRunActions();
-    } catch (error) {
-      console.error("Error during Rec Test Run:", error);
+      function mouseMoveHandler(e) {
+        currentX = e.clientX;
+        currentY = e.clientY;
+    
+        const width = Math.abs(currentX - startX);
+        const height = Math.abs(currentY - startY);
+        const left = Math.min(currentX, startX);
+        const top = Math.min(currentY, startY);
+    
+        // Apply the calculated styles to the selection box
+        selectionBox.style.width = width + 'px';
+        selectionBox.style.height = height + 'px';
+        selectionBox.style.left = left + 'px';
+        selectionBox.style.top = top + 'px';
+    
+        // Save the selection data
+        selectionData = { width, height, left, top };
+    
+        console.log(`Selection Box Style -> width: ${width}px, height: ${height}px, left: ${left}px, top: ${top}px`);
     }
+    
+    function mouseUpHandler() {
+        document.removeEventListener('mousemove', mouseMoveHandler);
+        document.removeEventListener('mouseup', mouseUpHandler);
+        overlay.style.display = 'none';
+    
+        console.log(`mouse up final sizes -> width: ${selectionData.width}px, height: ${selectionData.height}px, left: ${selectionData.left}px, top: ${selectionData.top}px`);
+    
+        // Use the saved dimensions instead of getBoundingClientRect()
+        if (selectionData.width > 0 && selectionData.height > 0) {
+            resolve({ x: selectionData.left, y: selectionData.top, width: selectionData.width, height: selectionData.height });
+        } else {
+            console.warn("Invalid selection area. Please try again.");
+            resolve(null);
+        }
+    
+    }
+    
+  
+      function mouseDownHandler(e) {
+        startX = e.clientX;
+        startY = e.clientY;
+        console.log(`Mouse down: (${startX}, ${startY})`);
+  
+        selectionBox.style.width = '0px';
+        selectionBox.style.height = '0px';
+        selectionBox.style.left = startX + 'px';
+        selectionBox.style.top = startY + 'px';
+  
+        document.addEventListener('mousemove', mouseMoveHandler);
+        document.addEventListener('mouseup', mouseUpHandler);
+      }
+  
+      overlay.addEventListener('mousedown', mouseDownHandler);
+    });
   }
   
   
+  async function recTestRunActions(writable, selection) {
+    console.log(selection);
+    try {
+        // Change the position of the HUD to relative during recording
+        const hudElement = document.getElementById('hud');
+        if (hudElement) {
+            hudElement.style.position = 'relative';
+        }
+
+        // Get the height of the canvas element
+        const boardCanvas = document.getElementById('board');
+        if (!boardCanvas) {
+            console.error("Canvas element with id 'board' not found.");
+            return;
+        }
+
+        // Calculate the adjustment based on canvas height and window height
+        const canvasHeight = boardCanvas.clientHeight; // height of the canvas in pixels
+        const winHeight = window.screen.height;
+        const adjustmentHeight = winHeight - canvasHeight;
+
+        // Adjust the selection to account for the browser's chrome height
+        selection.y += adjustmentHeight + 115;
+        console.log("Adjusted selection area:", selection);
+
+        // Capture the display stream with video only
+        const displayStream = await navigator.mediaDevices.getDisplayMedia({
+            video: {
+                cursor: "always",
+                displaySurface: "browser",
+                selfBrowserSurface: 'include', // Include the current tab in the choices offered for capture
+            },
+            audio: false, // No audio capture
+        });
+
+        // Get the video track
+        const [videoTrack] = displayStream.getVideoTracks();
+        if (!videoTrack) {
+            console.error("No video track available.");
+            return;
+        }
+
+        // Create an offscreen canvas to crop the video
+        const cropCanvas = document.createElement('canvas');
+        cropCanvas.width = selection.width;
+        cropCanvas.height = selection.height;
+        const ctx = cropCanvas.getContext('2d');
+
+        // Create a video element to play the captured stream
+        const video = document.createElement('video');
+        video.srcObject = new MediaStream([videoTrack]);
+        
+        video.addEventListener('loadedmetadata', () => {
+            console.log("Video metadata loaded. Dimensions:", video.videoWidth, video.videoHeight);
+            video.play().then(() => {
+                console.log("Video is playing.");
+                drawFrame(); // Start drawing frames after video starts playing
+            }).catch((error) => {
+                console.error("Error playing video:", error);
+            });
+        });
+
+        function drawFrame() {
+            if (recorder && recorder.state === 'recording' && !video.paused && !video.ended) {
+                ctx.clearRect(0, 0, cropCanvas.width, cropCanvas.height);
+                ctx.drawImage(video, selection.x, selection.y, selection.width, selection.height, 0, 0, selection.width, selection.height);
+
+                requestAnimationFrame(drawFrame);
+            } else {
+                console.log("Stopped drawing frames because video is paused, ended, or recorder is stopped.");
+            }
+        }
+
+        // Capture the cropped canvas as a stream
+        const croppedStream = cropCanvas.captureStream(30); // 30 FPS
+
+        // Set up the media recorder
+        const options = { mimeType: 'video/webm; codecs=vp8' };
+        recorder = new MediaRecorder(croppedStream, options); // Assign to global variable
+        const chunks = [];
+
+        recorder.ondataavailable = (event) => {
+            if (event.data.size > 0) {
+                console.log("Data available: ", event.data.size);
+                chunks.push(event.data);
+            }
+        };
+
+        recorder.onstop = async () => {
+            console.log("Recording stopped. Chunks length: ", chunks.length);
+            if (chunks.length > 0) {
+                const blob = new Blob(chunks, { type: 'video/webm' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'recording.webm';
+                a.click();
+                console.log("Recording saved successfully.");
+            } else {
+                console.warn("No chunks to save.");
+            }
+
+            // Cleanup resources
+            video.pause();
+            video.srcObject = null;
+            videoTrack.stop();
+            cropCanvas.width = 0;
+            cropCanvas.height = 0;
+
+            // Revert the HUD position back to absolute after recording
+            if (hudElement) {
+                hudElement.style.position = 'absolute';
+            }
+
+            console.log("Resources cleaned up.");
+        };
+
+        recorder.onerror = (event) => {
+            console.error("Recorder error: ", event.error);
+        };
+
+        // Start recording
+        recorder.start();
+        console.log("Recording started.");
+
+        // Perform the test run actions without stopping the recording automatically
+        await testRunActions();
+
+    } catch (error) {
+        console.error("Error during Rec Test Run:", error);
+    }
+}
+
 
   
   async function testRunActions() {
